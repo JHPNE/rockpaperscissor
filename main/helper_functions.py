@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import cv2
 
 REFERENCE_VECTORS = {
     'up': np.array([0, -1, 0]),
@@ -42,23 +43,191 @@ def move_detection(hand_landmarkers, orientation):
         ring_finger_pip_diff = vector_length(ring_finger_pip, wrist) > vector_length(ring_finger_tip, wrist) 
 
         if all([pinky_diff, ring_finger_diff, middle_finger_diff, index_finger_diff]):
-            return 'rock' 
+            return 'Rock' 
         elif all([pinky_diff, ring_finger_diff, ring_finger_pip_diff]):
-            return 'scissor'
+            return 'Scissors'
         else:
-            return 'hand' 
+            return 'Paper' 
 
+def add_text_center(frame, move_text, elapsed_time_text):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    move_size = cv2.getTextSize(move_text, font, 1.5, 3)[0]  
+    time_size = cv2.getTextSize(elapsed_time_text, font, 5, 7)[0]  
+
+    move_x = (frame.shape[1] - move_size[0]) // 2
+    move_y = (frame.shape[0] - move_size[1]) // 2
+
+    time_x = (frame.shape[1] - time_size[0]) // 2
+    time_y = move_y + move_size[1] + 100 
+
+    if int(elapsed_time_text) > 1:
+        cv2.putText(frame, move_text, (move_x, move_y), font, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  
+        cv2.putText(frame, elapsed_time_text, (time_x, time_y), font, 5, (255, 0, 0), 7, cv2.LINE_AA)  
+
+def countdown_timer(countdown):
+    time.sleep(1)
+    return countdown - 1
+
+def results(player1_move, player2_move):
+    print(player1_move, player2_move)
+
+    win_conditions = {
+        'Rock': 'Scissors',
+        'Paper': 'Rock',
+        'Scissors': 'Paper'
+    }
+
+    if player1_move == player2_move:
+        return "Tie"
+    elif win_conditions[player1_move] == player2_move:
+        return "Win"
+    else:
+        return "Lose"
+
+
+def win_lose_trade(games_info):
+    moves_dict = {
+        "rock": "paper",
+        "paper": "scissors",
+        "scissors": "rock"
+    }
+
+    move  = games_info.move
+    result = games_info.result
+
+    if result == 'win':
+        return moves_dict.get(move)
+    else:
+        return move
 
 # counter movement 
-def counter():
-    pass
+def counter(mouth_info, eye_info, brow_info, hand_info):
+    hand_indication = determine_rock_paper_scissors_mouth_eye_hand(hand_info)
+    mouth_indication = determine_rock_paper_scissors_mouth_eye_hand(mouth_info)
+    eye_indication = determine_rock_paper_scissors_mouth_eye_hand(eye_info)
+    brow_indication = determine_rock_paper_scissors_mouth_eye_hand(brow_info)
 
-# brow indicator
-def brow_movement(face_landmarks):
+    indicators = [hand_indication, mouth_indication, eye_indication, brow_indication]
+    return indicators
+
+def evaluate_moves_initial(indicators):
+    counts = {'Rock': 0, 'Paper': 0, 'Scissors': 0}
+    weights = {'hand': 1, 'mouth': 2, 'eye': 0.5, 'brow': 0.5}
+
+    [hand, mouth, eye, brow] = indicators
+
+    counts[hand] += weights['hand']
+    counts[mouth] += weights['mouth']
+    counts[eye] += weights['eye']
+    counts[brow] += weights['brow']
+    
+    v = list(counts.values())
+    k = list(counts.keys())
+
+    print('dictionary', k)
+
+    return k[v.index(max(v))]
+
+def evaluate_move(indicators, games_info):
+    evaluated_move = evaluate_moves_initial(indicators)
+    win_lose_move = win_lose_trade(games_info)
+
+    if win_lose_move == evaluated_move:
+        return win_lose_move
+    else: 
+        return win_lose_move
+
+def determine_eyebrow_movement(face_landmarks, threshold=0.1):
     if face_landmarks is not None:
         landmarks = face_landmarks.landmark
 
-    pass
+        left_eyebrow_inner = [landmarks[276].x, landmarks[276].y, 0]
+        left_eyebrow_outer = [landmarks[283].x, landmarks[283].y, 0]  
+        right_eyebrow_inner = [landmarks[324].x, landmarks[324].y, 0]  
+        right_eyebrow_outer = [landmarks[321].x, landmarks[321].y, 0] 
+
+        diff_left_x = left_eyebrow_inner[0] - left_eyebrow_outer[0]
+        diff_left_y = left_eyebrow_inner[1] - left_eyebrow_outer[1]
+        diff_right_x = right_eyebrow_outer[0] - right_eyebrow_inner[0]
+        diff_right_y = right_eyebrow_outer[1] - right_eyebrow_inner[1]
+
+        if abs(diff_left_x) < threshold and abs(diff_left_y) < threshold:
+            left_movement = "Still"
+        elif diff_left_x > threshold and diff_left_y > threshold:
+            left_movement = "Moved up and left"
+        elif diff_left_x > threshold and diff_left_y < -threshold:
+            left_movement = "Moved down and left"
+        elif diff_left_x < -threshold and diff_left_y > threshold:
+            left_movement = "Moved up and right"
+        elif diff_left_x < -threshold and diff_left_y < -threshold:
+            left_movement = "Moved down and right"
+        else:
+            left_movement = "Undefined"
+
+        if abs(diff_right_x) < threshold and abs(diff_right_y) < threshold:
+            right_movement = "Still"
+        elif diff_right_x > threshold and diff_right_y > threshold:
+            right_movement = "Moved up and left"
+        elif diff_right_x > threshold and diff_right_y < -threshold:
+            right_movement = "Moved down and left"
+        elif diff_right_x < -threshold and diff_right_y > threshold:
+            right_movement = "Moved up and right"
+        elif diff_right_x < -threshold and diff_right_y < -threshold:
+            right_movement = "Moved down and right"
+        else:
+            right_movement = "Undefined"
+
+        return left_movement, right_movement
+
+def determine_rock_paper_scissors_brow(left_movement, right_movement):
+    if left_movement == "Moved down and left" or right_movement == "Moved down and left":
+        return "Rock"
+    elif left_movement == "Moved up and left" or right_movement == "Moved up and left":
+        return "Paper"
+    elif (
+        left_movement == "Moved up and right"
+        or right_movement == "Moved up and right"
+        or left_movement == "Moved down and right"
+        or right_movement == "Moved down and right"
+    ):
+        return "Scissors"
+    else:
+        return "Undefined"
+
+def determine_rock_paper_scissors_mouth_eye_hand(states):
+    open = 0
+    close = 0
+    max_duration_open = 0
+    max_duration_close = 0
+    current_max_duration = 0
+    current_state = None
+
+    for state in states:
+        if state == 'open':
+            open += 1
+
+            if current_state != 'open':
+                current_state = 'open'
+                current_max_duration = 0
+                max_duration_open = max(max_duration_open, current_max_duration)
+            else:
+                current_max_duration += 1
+        else:
+            close += 1
+            
+            if current_state != 'close':
+                current_state = 'close'
+                current_max_duration = 0
+                max_duration_open = max(max_duration_close, current_max_duration)
+            else:
+                current_max_duration += 1
+
+    if max_duration_open > max_duration_close and open > close:
+        return "Paper"
+    elif max_duration_open < max_duration_close and open <= close:
+        return "Rock"
+    else:
+        return "Scissors"
 
 # mouth indicator
 def mouth_movement(face_landmarks):
@@ -91,7 +260,7 @@ def mouth_movement(face_landmarks):
         threshold_twitch = 0.038
 
         if all([ round(i, 4) <= threshold for i in [ind_1, ind_2, ind_3]]):
-            return 'clutching'
+            return 'close'
         else:
             return 'open'
 
@@ -114,7 +283,7 @@ def eye_movement(face_landmarks):
         threshold = 0.018
 
         if all([ round(i, 4) <= threshold for i in [ind_3, ind_4, ind_5]]):
-            return 'closing'
+            return 'close'
         else:
             return 'open'
 
@@ -135,12 +304,10 @@ def clutched_or_relaxed(hand_landmarks):
         min_threshold = 0.03
         max_threshold = 0.06
 
-        print(index_middle_finger)
-
         if all([ round(i,3) <= min_threshold for i in [index_middle_finger, middle_ring_finger, pinky_ring]]):
-            return 'clutched'
+            return 'close'
         elif all([ round(i,3) >= max_threshold for i in [index_middle_finger, middle_ring_finger, pinky_ring]]):
-            return 'relaxed'
+            return 'open'
 
 def vector_length(a, b):
     vector = np.array(a) - np.array(b)
