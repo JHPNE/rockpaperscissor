@@ -68,9 +68,7 @@ def countdown_timer(countdown):
     time.sleep(1)
     return countdown - 1
 
-def results(player1_move, player2_move):
-    print(player1_move, player2_move)
-
+def resultsAsd(player1_move, player2_move):
     win_conditions = {
         'Rock': 'Scissors',
         'Paper': 'Rock',
@@ -87,13 +85,13 @@ def results(player1_move, player2_move):
 
 def win_lose_trade(games_info):
     moves_dict = {
-        "rock": "paper",
-        "paper": "scissors",
-        "scissors": "rock"
+        "Rock": "Paper",
+        "Paper": "Scissors",
+        "Scissors": "Rock"
     }
 
-    move  = games_info.move
-    result = games_info.result
+    move  = games_info['move']
+    result = games_info['result']
 
     if result == 'win':
         return moves_dict.get(move)
@@ -123,8 +121,6 @@ def evaluate_moves_initial(indicators):
     
     v = list(counts.values())
     k = list(counts.keys())
-
-    print('dictionary', k)
 
     return k[v.index(max(v))]
 
