@@ -1,18 +1,21 @@
 import cv2
 import mediapipe as mp
 import time
+import threading
 
-from helper_functions import fps_calculator, move_detection, get_orientation, clutched_or_relaxed, eye_movement, mouth_movement, countdown_timer, add_text_center 
-from helper_functions import determine_eyebrow_movement, counter, evaluate_move, resultsAsd, evaluate_moves_initial
+from helper_functions import *
+# from helper_functions import fps_calculator, move_detection, get_orientation, clutched_or_relaxed, eye_movement, mouth_movement, countdown_timer, add_text_center, get_counter_part, determine_eyebrow_movement, counter, evaluate_move, resultsAsd, evaluate_moves_initial
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_holistic = mp.solutions.holistic
 
+initial_countdown = 6
+
 # For webcam input:
 cap = cv2.VideoCapture(0)
 previous_time = 0
-countdown = 10 
+countdown = initial_countdown
 start_time = time.time()
 
 hand_info = []
@@ -27,6 +30,7 @@ games_info = {
     'move': None,
     'result': None,
 }
+indicator_move = "Predicting..."
 
 with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
   while cap.isOpened():
@@ -47,11 +51,12 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     
     # Draw Face Landmarks
-    mp_drawing.draw_landmarks(
-      image,
-      results.face_landmarks,
-      mp_holistic.FACEMESH_CONTOURS,
-    )
+#
+#    mp_drawing.draw_landmarks(
+#      image,
+#      results.face_landmarks,
+#      mp_holistic.FACEMESH_CONTOURS,
+#    )
     
     # Draw Hand Landmarks
     mp_drawing.draw_landmarks(
@@ -73,11 +78,11 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
 
     elapsed_time_second = int(time.time() - start_time)
     time_diff = countdown - elapsed_time_second
-
-    print(time_diff)
+    if time_diff == initial_countdown - 3:
+        indicator_move = "Predicting..."
 
     if time_diff > 0:
-        add_text_center(frame, "Waehle deinen Zug:", str(time_diff))
+        add_text_center(frame, "Chose your weapon (right hand only)", str(time_diff))
 
         value = get_orientation(results.right_hand_landmarks)
         move = move_detection(results.right_hand_landmarks, value)
@@ -98,19 +103,19 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
         move = moves_info[-1]
         result = ''
 
-        if rounds == 0:
-            indicator_move = evaluate_moves_initial(indicators) 
-            result = resultsAsd(move, indicator_move)
-            games_info['move'] = move 
-            games_info['result'] = result
+        if move == None:
+             start_time = time.time()
+             rounds += 1
+             countdown = initial_countdown
+             continue
 
-        if rounds > 0:
-            indicator_move = evaluate_move(indicators, games_info)
-            result = resultsAsd(move, indicator_move)
-            games_info['move'] = move 
-            games_info['result'] = result
+        indicator_move = get_counter_part(evaluate_moves_initial(indicators) if rounds == 0 else evaluate_move(indicators, games_info))
 
-        countdown = 15 
+        result = resultsAsd(move, indicator_move)
+        games_info['move'] = move 
+        games_info['result'] = result
+
+        countdown = initial_countdown
         start_time = time.time()
         rounds += 1
         
@@ -120,7 +125,8 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
         brow_info = []
         moves_info = []
 
-    cv2.putText(frame, 'RESULT: ' + result, (35, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  
+    cv2.putText(frame, 'Actual player move: ' + str(move), (35, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  
+    cv2.putText(frame, 'Computer played: ' + str(indicator_move), (35, 140), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  
 
     cv2.imshow('frame', frame)
 

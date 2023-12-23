@@ -83,6 +83,17 @@ def resultsAsd(player1_move, player2_move):
         return "Lose"
 
 
+def get_counter_part(move):
+    moves_dict = {
+        "Rock": "Paper",
+        "Paper": "Scissors",
+        "Scissors": "Rock"
+    }
+    if move == None:
+      return None
+    return moves_dict[move]
+
+
 def win_lose_trade(games_info):
     moves_dict = {
         "Rock": "Paper",
@@ -130,7 +141,7 @@ def evaluate_move(indicators, games_info):
 
     if win_lose_move == evaluated_move:
         return win_lose_move
-    else: 
+    else:
         return win_lose_move
 
 def determine_eyebrow_movement(face_landmarks, threshold=0.1):
