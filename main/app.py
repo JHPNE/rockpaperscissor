@@ -1,7 +1,6 @@
 import cv2
 import mediapipe as mp
 import time
-import threading
 
 from helper_functions import *
 # from helper_functions import fps_calculator, move_detection, get_orientation, clutched_or_relaxed, eye_movement, mouth_movement, countdown_timer, add_text_center, get_counter_part, determine_eyebrow_movement, counter, evaluate_move, resultsAsd, evaluate_moves_initial
@@ -51,12 +50,12 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     
     # Draw Face Landmarks
-#
-#    mp_drawing.draw_landmarks(
-#      image,
-#      results.face_landmarks,
-#      mp_holistic.FACEMESH_CONTOURS,
-#    )
+
+    mp_drawing.draw_landmarks(
+      image,
+      results.face_landmarks,
+      mp_holistic.FACEMESH_CONTOURS,
+    )
     
     # Draw Hand Landmarks
     mp_drawing.draw_landmarks(
@@ -82,7 +81,7 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
         indicator_move = "Predicting..."
 
     if time_diff > 0:
-        add_text_center(frame, "Chose your weapon (right hand only)", str(time_diff))
+        add_text_center(frame, "Think about what your move will be! Chose your weapon (right hand only)", str(time_diff))
 
         value = get_orientation(results.right_hand_landmarks)
         move = move_detection(results.right_hand_landmarks, value)
@@ -109,21 +108,22 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
              countdown = initial_countdown
              continue
 
-        indicator_move = get_counter_part(evaluate_moves_initial(indicators) if rounds == 0 else evaluate_move(indicators, games_info))
+        indicator_move = get_counter_part(evaluate_moves_initial(indicators))
 
         result = resultsAsd(move, indicator_move)
         games_info['move'] = move 
         games_info['result'] = result
 
+        hand_info.clear()
+        eye_info.clear()
+        mouth_info.clear()
+        brow_info.clear()
+        moves_info.clear()
+
         countdown = initial_countdown
         start_time = time.time()
         rounds += 1
         
-        hand_info = []
-        eye_info = []
-        mouth_info = []
-        brow_info = []
-        moves_info = []
 
     cv2.putText(frame, 'Actual player move: ' + str(move), (35, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  
     cv2.putText(frame, 'Computer played: ' + str(indicator_move), (35, 140), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 3, cv2.LINE_AA)  

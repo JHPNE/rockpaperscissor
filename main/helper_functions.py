@@ -121,7 +121,7 @@ def counter(mouth_info, eye_info, brow_info, hand_info):
 
 def evaluate_moves_initial(indicators):
     counts = {'Rock': 0, 'Paper': 0, 'Scissors': 0}
-    weights = {'hand': 1, 'mouth': 2, 'eye': 0.5, 'brow': 0.5}
+    weights = {'hand': 2, 'mouth': 1, 'eye': 0.5, 'brow': 0.5}
 
     [hand, mouth, eye, brow] = indicators
 
@@ -135,14 +135,10 @@ def evaluate_moves_initial(indicators):
 
     return k[v.index(max(v))]
 
-def evaluate_move(indicators, games_info):
+def evaluate_move(indicators):
     evaluated_move = evaluate_moves_initial(indicators)
-    win_lose_move = win_lose_trade(games_info)
 
-    if win_lose_move == evaluated_move:
-        return win_lose_move
-    else:
-        return win_lose_move
+    return evaluated_move 
 
 def determine_eyebrow_movement(face_landmarks, threshold=0.1):
     if face_landmarks is not None:
@@ -204,37 +200,48 @@ def determine_rock_paper_scissors_brow(left_movement, right_movement):
 def determine_rock_paper_scissors_mouth_eye_hand(states):
     open = 0
     close = 0
-    max_duration_open = 0
-    max_duration_close = 0
-    current_max_duration = 0
-    current_state = None
 
     for state in states:
+        if (state == None): continue 
+
         if state == 'open':
             open += 1
 
-            if current_state != 'open':
-                current_state = 'open'
-                current_max_duration = 0
-                max_duration_open = max(max_duration_open, current_max_duration)
-            else:
-                current_max_duration += 1
         else:
             close += 1
-            
-            if current_state != 'close':
-                current_state = 'close'
-                current_max_duration = 0
-                max_duration_open = max(max_duration_close, current_max_duration)
-            else:
-                current_max_duration += 1
+    
+    consecutiveString = most_consecutive_string(states);
 
-    if max_duration_open > max_duration_close and open > close:
+    if consecutiveString == 'open' and open > close:
         return "Paper"
-    elif max_duration_open < max_duration_close and open <= close:
+    elif consecutiveString == 'close' and open <= close:
         return "Rock"
     else:
         return "Scissors"
+
+def most_consecutive_string(strings):
+    if not strings:
+        return None
+
+    max_string = None
+    max_count = 0
+    current_string = None
+    current_count = 0
+
+    for string in strings:
+        if string == None: continue
+
+        if string == current_string:
+            current_count += 1
+        else:
+            current_string = string
+            current_count = 1
+
+        if current_count > max_count:
+            max_count = current_count
+            max_string = current_string
+
+    return max_string
 
 # mouth indicator
 def mouth_movement(face_landmarks):
@@ -308,12 +315,11 @@ def clutched_or_relaxed(hand_landmarks):
         middle_ring_finger = vector_length(middle_finger_tip, ring_finger_tip)
         pinky_ring = vector_length(ring_finger_tip, pinky_tip)
 
-        min_threshold = 0.03
-        max_threshold = 0.06
+        min_threshold = 0.05
 
         if all([ round(i,3) <= min_threshold for i in [index_middle_finger, middle_ring_finger, pinky_ring]]):
             return 'close'
-        elif all([ round(i,3) >= max_threshold for i in [index_middle_finger, middle_ring_finger, pinky_ring]]):
+        elif all([ round(i,3) >= min_threshold for i in [index_middle_finger, middle_ring_finger, pinky_ring]]):
             return 'open'
 
 def vector_length(a, b):
